@@ -1,4 +1,4 @@
-//Jerome Stonebridge
+//(C)2017 Jerome Stonebridge
 #include <Keypad.h>
 #include <SPI.h>
 #include <Adafruit_GFX.h>
@@ -29,7 +29,7 @@ Keypad customKeypad = Keypad( makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS
 void setup(){
   //Serial.begin(9600); //must be disabled for the 3rd collum of keys to work
   pinMode(shutterPin, OUTPUT); 
-  digitalWrite(shutterPin, LOW);  
+  digitalWrite(shutterPin, HIGH);  
   display.begin();
   display.setContrast(60);
   display.display(); // show splashscreen
@@ -123,13 +123,13 @@ void loop(){
       display.println(currentFrame);
       display.display();
       
-      digitalWrite(shutterPin, HIGH);   
+      digitalWrite(shutterPin, LOW);   
       delay(50);                  
-      digitalWrite(shutterPin, LOW);  
+      digitalWrite(shutterPin, HIGH);  
       
       currentFrame++;
       unsigned long startMillis = millis();
-      while (millis() - startMillis < (input2*1000)); //TODO put in real delay..
+      while (millis() - startMillis < (input2*1000));
   }else{
       display.clearDisplay();  
       display.setCursor(0,0);
