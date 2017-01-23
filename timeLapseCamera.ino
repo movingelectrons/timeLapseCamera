@@ -27,17 +27,18 @@ byte colPins[COLS] = {7, 6, 5, 4}; //connect to the column pinouts of the keypad
 Keypad customKeypad = Keypad( makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS); 
 
 void setup(){
-  //Serial.begin(9600); //must be disabled for the 3rd collum of keys to work
+  //Serial.begin(9600); //!!must be disabled for the 3rd collum of keys to work
   pinMode(shutterPin, OUTPUT); 
   digitalWrite(shutterPin, HIGH);  
   display.begin();
   display.setContrast(60);
   display.display(); // show splashscreen
   delay(750);
-  display.clearDisplay();   // clears the screen and buffer
+  display.clearDisplay();
   display.setRotation(2);
   display.setTextSize(1);
   display.setTextColor(BLACK);
+  display.clearDisplay();   // clears the screen and buffer
   display.setCursor(0,0);
   display.println("Total frames");
   display.setCursor(0,10);
@@ -47,107 +48,117 @@ void setup(){
   display.display();
   delay(250);
 }
+void(* resetFunc) (void) = 0; //declare reset function @ address 0
 
 int input1i = 0;
-int input1array[] = {0, 0, 0, 0, 0};
+int input1array[] = {-1, -1, -1, -1, -1};
 int input1 = 0;
 int input2i = 0;
-int input2array[] = {0, 0, 0, 0, 0};
+int input2array[] = {-1, -1, -1, -1, -1};
 int input2 = 0;
 bool startCapture = false;
 char customKey;
 char exitKey = 42; //*
-int currentFrame = 0;
+int currentFrame = 1;
 
 void loop(){
-  if(startCapture == false){
   customKey = customKeypad.getKey();
-  if (customKey && input1 == 0){
-    if(customKey!=exitKey){
-      input1array[input1i] = (int)customKey - 48;
-      input1i = input1i+1;
-      display.setCursor(input1i*6,20);
-      display.print(customKey);
-      display.display();
-   }else if(customKey==exitKey){
-      input1 = totalArray(input1array);
-      display.clearDisplay();  
-      display.setCursor(0,0);
-      display.print("Frames ");
-      display.print(input1);
-      display.setCursor(0,10);
-      display.println("Seconds delay");
-      display.setCursor(0,20);
-      display.println("(max 32,767)");
-      display.setCursor(0,40);
-      display.println("then press *");
-      display.display();
+  if(startCapture == false){
+    if (customKey && input1 == 0){
+      if(customKey!=exitKey){
+        input1array[input1i] = (int)customKey - 48;
+        input1i = input1i+1;
+        display.setCursor(input1i*6,20);
+        display.print(customKey);
+        display.display();
+      }else if(customKey==exitKey){
+        input1 = totalArray(input1array);
+        display.clearDisplay();  
+        display.setCursor(0,0);
+        display.print("Frames ");
+        display.print(input1);
+        display.setCursor(0,10);
+        display.println("Seconds delay");
+        display.setCursor(0,20);
+        display.println("(max 32,767)");
+        display.setCursor(0,40);
+        display.println("then press *");
+        display.display();
+      }
+    }else if (customKey && input2 == 0 && input1 != 0){
+      if(customKey!=exitKey){
+        input2array[input2i] = (int)customKey - 48;
+        input2i = input2i+1;
+        display.setCursor(input2i*6,30);
+        display.print(customKey);
+        display.display();
+      }else if(customKey==exitKey){
+        input2 = totalArray(input2array);
+        display.clearDisplay();  
+        display.setCursor(0,0);
+        display.print("Frames ");
+        display.print(input1);
+        display.setCursor(0,10);
+        display.print("Delay ");
+        display.print(input2);
+        display.setCursor(0,30);
+        display.println("Press * to");
+        display.setCursor(0,40);
+        display.println(" start!");
+        display.display();
+      }
+    }else if (customKey && input2 != 0 && input1 != 0){
+      if(customKey==exitKey){
+        startCapture = true;
+      }
     }
-  }else if (customKey && input2 == 0 && input1 != 0){
-    if(customKey!=exitKey){
-      input2array[input2i] = (int)customKey - 48;
-      input2i = input2i+1;
-      display.setCursor(input2i*6,30);
-      display.print(customKey);
-      display.display();
-   }else if(customKey==exitKey){
-      input2 = totalArray(input2array);
-      display.clearDisplay();  
-      display.setCursor(0,0);
-      display.print("Frames ");
-      display.print(input1);
-      display.setCursor(0,10);
-      display.print("Delay ");
-      display.print(input2);
-      display.setCursor(0,30);
-      display.println("Press * to");
-      display.setCursor(0,40);
-      display.println(" start!");
-      display.display();
-    }
-  }else if (customKey && input2 != 0 && input1 != 0){
-    if(customKey==exitKey){
-      startCapture = true;
-    }
-  }
-  }else if(currentFrame < input1){
+  }else if(currentFrame <= input1){
     display.clearDisplay();  
     display.setCursor(0,0);
-      display.print("Frames ");
-      display.print(input1);
-      display.setCursor(0,10);
-      display.print("Delay ");
-      display.print(input2);
-      display.setCursor(0,30);
-      display.print("On frame ");
-      display.println(currentFrame);
-      display.display();
+    display.print("Frames ");
+    display.print(input1);
+    display.setCursor(0,10);
+    display.print("Delay ");
+    display.print(input2);
+    display.setCursor(0,30);
+    display.print("On frame ");
+    display.println(currentFrame);
+    display.display();
       
-      digitalWrite(shutterPin, LOW);   
-      delay(50);                  
-      digitalWrite(shutterPin, HIGH);  
+    digitalWrite(shutterPin, LOW);   
+    delay(50);                  
+    digitalWrite(shutterPin, HIGH);  
       
-      currentFrame++;
+    currentFrame++;
+    if(currentFrame <= input1){
       unsigned long startMillis = millis();
       while (millis() - startMillis < (input2*1000));
-  }else{
-      display.clearDisplay();  
-      display.setCursor(0,0);
-      display.print("Frames ");
-      display.print(input1);
-      display.setCursor(0,10);
-      display.print("Delay ");
-      display.print(input2);
-      display.display();
-      delay(500);
-      completedScreenBlink();
-      delay(500);
+    }
+  }else{ //done capturing frames
+    if(customKey==exitKey){
+      resetFunc();  //call reset
+      delay(100);
+    }
+    display.clearDisplay();  
+    display.setCursor(0,0);
+    display.print("Frames ");
+    display.print(input1);
+    display.setCursor(0,10);
+    display.print("Delay ");
+    display.print(input2);
+    display.setCursor(0,40);
+    display.print("Hold * to reset");
+    display.display();
+    delay(500);
+    completedScreenBlink();
+    delay(500);
   }
 }
 
 int totalArray(int mArray[]){
-  int i0, i1, i2, i3, i4 = 0;
+  int i0, i1, i2, i3, i4 = -1;
   for(int i = 0; i < 5; i++){
+    Serial.println(mArray[i]);
     if(i == 0){
       i0 = mArray[i];
     }else if(i == 1){
@@ -165,17 +176,17 @@ int totalArray(int mArray[]){
   Serial.println(i2);
   Serial.println(i3);
   Serial.println(i4);
-  if(i0 == 0){
-    //? throw error
-  }else if((i1==0)&&(i2==0)&&(i3==0)&&(i4==0)){
-    return i0;
-  }else if((i2==0)&&(i3==0)&&(i4==0)){
+  if((i0==-1)&&(i1==-1)&&(i2==-1)&&(i3==-1)&&(i4==-1)){
+    //throw error
+  }else if((i1==-1)&&(i2==-1)&&(i3==-1)&&(i4==-1)){
+    return i0; //only one digit was entered, so return it
+  }else if((i2==-1)&&(i3==-1)&&(i4==-1)){
     int retval = (i0*10) + i1;
     return retval;
-  }else if((i3==0)&&(i4==0)){
+  }else if((i3==-1)&&(i4==-1)){
     int retval = (i0*100) + (i1*10) + i2;
     return retval;
-  }else if(i4==0){
+  }else if(i4==-1){
     int retval = (i0*1000) + (i1*100) + (i2*10) + i3;
     return retval;
   }else{
@@ -195,6 +206,8 @@ void completedScreenBlink(){
   display.print(input2);
   display.setCursor(0,30);
   display.print("COMPLETED");
+  display.setCursor(0,40);
+  display.print("Hold * to reset");
   display.display();
 }
 
