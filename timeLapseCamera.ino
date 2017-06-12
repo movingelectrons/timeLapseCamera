@@ -3,6 +3,10 @@
 #include <SPI.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_PCD8544.h>
+#include <Time.h>
+#include <TimeLib.h> // WE need this header
+#include <Wire.h>
+#include <DS1307RTC.h>
 
 Adafruit_PCD8544 display = Adafruit_PCD8544(12, 11, 10, 9, 8);
 #define LOGO16_GLCD_HEIGHT 16
@@ -24,14 +28,22 @@ byte rowPins[ROWS] = {3, 2, 1, 0}; //connect to the row pinouts of the keypad
 byte colPins[COLS] = {7, 6, 5, 4}; //connect to the column pinouts of the keypad
 
 //initialize an instance of class NewKeypad
-Keypad customKeypad = Keypad( makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS); 
+Keypad customKeypad = Keypad( makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS);
+
+const char *monthName[12] = {
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+};
+tmElements_t tm;
 
 void setup(){
-  //Serial.begin(9600); //!!must be disabled for the 3rd collum of keys to work
+  Serial.begin(9600); //!!must be disabled for the 3rd collum of keys to work
+  pinMode(13, OUTPUT); 
+  digitalWrite(13, HIGH);
   pinMode(shutterPin, OUTPUT); 
   digitalWrite(shutterPin, HIGH);  
   display.begin();
-  display.setContrast(60);
+  display.setContrast(45);
   display.display(); // show splashscreen
   delay(750);
   display.clearDisplay();
@@ -46,16 +58,43 @@ void setup(){
   display.setCursor(0,40);
   display.println("then press *");
   display.display();
+
+  bool parse=false;
+  bool config=false;
+  // get the date and time the compiler was run
+  if (getDate(__DATE__) && getTime(__TIME__)) {
+    parse = true;
+    // and configure the RTC with this info
+    if (RTC.write(tm)) {
+      config = true;
+    }
+  }
+  if (parse && config) {
+    Serial.print("DS1307 configured Time=");
+    Serial.print(__TIME__);
+    Serial.print(", Date=");
+    Serial.println(__DATE__);
+  } else if (parse) {
+    Serial.println("DS1307 Communication Error :-{");
+    Serial.println("Please check your circuitry");
+  } else {
+    Serial.print("Could not parse info from the compiler, Time=\"");
+    Serial.print(__TIME__);
+    Serial.print("\", Date=\"");
+    Serial.print(__DATE__);
+    Serial.println("\"");
+  }
+  
   delay(250);
 }
 void(* resetFunc) (void) = 0; //declare reset function @ address 0
 
 int input1i = 0;
 int input1array[] = {-1, -1, -1, -1, -1};
-int input1 = 0;
+int input1 = 0; //total frames
 int input2i = 0;
 int input2array[] = {-1, -1, -1, -1, -1};
-int input2 = 0;
+int input2 = 0; //delay inbetween frames (in minutes)
 bool startCapture = false;
 char customKey;
 char exitKey = 42; //*
@@ -78,7 +117,7 @@ void loop(){
         display.print("Frames ");
         display.print(input1);
         display.setCursor(0,10);
-        display.println("Seconds delay");
+        display.println("Minutes delay");
         display.setCursor(0,20);
         display.println("(max 32,767)");
         display.setCursor(0,40);
@@ -211,3 +250,30 @@ void completedScreenBlink(){
   display.display();
 }
 
+bool getTime(const char *str)
+{
+  int Hour, Min, Sec;
+
+  if (sscanf(str, "%d:%d:%d", &Hour, &Min, &Sec) != 3) return false;
+  tm.Hour = Hour;
+  tm.Minute = Min;
+  tm.Second = Sec;
+  return true;
+}
+
+bool getDate(const char *str)
+{
+  char Month[12];
+  int Day, Year;
+  uint8_t monthIndex;
+
+  if (sscanf(str, "%s %d %d", Month, &Day, &Year) != 3) return false;
+  for (monthIndex = 0; monthIndex < 12; monthIndex++) {
+    if (strcmp(Month, monthName[monthIndex]) == 0) break;
+  }
+  if (monthIndex >= 12) return false;
+  tm.Day = Day;
+  tm.Month = monthIndex + 1;
+  tm.Year = CalendarYrToTm(Year);
+  return true;
+}
